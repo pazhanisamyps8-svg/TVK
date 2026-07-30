@@ -1,0 +1,122 @@
+---
+- hosts: all
+  remote_user: root
+  become: yes
+
+  tasks:
+    - name: Create mount point
+      ansible.builtin.file:
+        path: /nfs-share
+        state: directory
+
+    - name: Add NFS entry to fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "192.168.13.13:/nfs-share /nfs-share nfs defaults,_netdev 0 0"
+        state: present
+    
+    - name: enble firewall
+      systemd:
+        name: firewalld
+        enabled: yes
+        state: started 
+
+    - name: Enable rpc-bind service in firewalld
+      ansible.posix.firewalld:
+        service: rpc-bind
+        permanent: true
+        state: enabled
+        immediate: true
+
+    - name: Reload firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Mount all filesystems from fstab
+      ansible.builtin.command: mount -a
+
+    - name: Install google chrome browser 
+      dnf:
+        name: /nfs-share/google-chrome-stable_current_x86_64.rpm
+        state: present
+        disable_gpg_check: yes
+
+    - name: Install libreoffice 
+      dnf:
+        name: /nfs-share/LibreOffice_26.2.4.2_Linux_x86-64_rpm/RPMS/*
+        state: present
+        disable_gpg_check: yes 
+    - name: Install required packages
+      yum:
+        name:
+          - vim
+          - tree
+          - wget
+          - net-tools
+        state: present
+
+    - name: Create a group
+      group:
+        name: developers
+        state: present
+
+    - name: Create a user
+      user:
+        name: testuser
+        group: developers
+        shell: /bin/bash
+        state: present
+
+    - name: Create a directory
+      file:
+        path: /opt/ansible-test
+        state: directory
+        owner: testuser
+        group: developers
+        mode: '0755'
+
+    - name: Create a file
+      copy:
+        dest: /opt/ansible-test/info.txt
+        content: |
+          Welcome to Ansible Lab
+          Created by Ansible Playbook
+        owner: testuser
+        group: developers
+        mode: '0644'
+
+    - name: Add a line to /etc/motd
+      lineinfile:
+        path: /etc/motd
+        line: "This server is managed by Ansible."
+        state: present
+
+    - name: Enable and start firewalld
+      service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Install Google Chrome from NFS share
+      yum:
+        name: /nfs-share/google-chrome-stable_current_x86_64.rpm
+        state: present
+        disable_gpg_check: yes
+
+    - name: Check Google Chrome version
+      command: google-chrome --version
+      register: chrome_version
+      ignore_errors: yes
+
+    - name: Display Chrome version
+      debug:
+        var: chrome_version.stdout
+
+    - name: Display disk usage
+      shell: df -h
+      register: disk_info
+
+    - name: Show disk usage
+      debug:
+        var: disk_info.stdout_lines
