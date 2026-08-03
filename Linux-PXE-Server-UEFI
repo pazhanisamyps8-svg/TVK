@@ -1,0 +1,117 @@
+•	Services Required
+•	We'll configure
+•	DHCP
+TFTP
+HTTP
+PXE Bootloader
+GRUB EFI
+Kickstart
+•	 Disable SELinux  and firewall (Practice Lab)
+•	Install Packages
+•	sudo dnf install -y \
+•	dhcp-server \
+•	tftp-server \
+•	syslinux \
+•	httpd \
+•	grub2-efi-x64 \
+•	shim-x64 \
+•	xinetd
+•	sudo dnf install -y rsync
+•	Mount ISO    sudo mkdir /mnt/rocky
+•	             sudo mount -o loop \
+•	               /home/pazhani/Desktop/Rocky-9.8-x86_64-dvd.iso \
+•	                  /mnt/rocky    Do the Permeant Mount for fstab   /home/pazhani/Desktop/Rocky-9.8-x86_64-dvd.iso  /mnt/rocky  iso9660  loop,ro  0  0
+•	Configure HTTP    sudo mkdir -p /var/www/html/rocky9
+                                  sudo rsync -av /mnt/rocky/ /var/www/html/rocky9/
+                                   sudo systemctl enable httpd –now
+Test http://System IP/rocky9   in browser 
+•	Configure DHCP     My system Ip 192.168.13.13
+                        sudo vi /etc/dhcp/dhcpd.conf
+Add this Line 
+
+default-lease-time 600;
+max-lease-time 7200;
+
+authoritative;
+
+subnet 192.168.13.0 netmask 255.255.255.0 {
+
+range 192.168.13.100 192.168.13.200;
+
+option routers 192.168.13.13;
+
+option domain-name-servers 8.8.8.8;
+
+next-server 192.168.13.13;
+
+filename "EFI/BOOT/BOOTX64.EFI";
+
+}
+•	Start The Service
+sudo systemctl enable dhcpd
+sudo systemctl restart dhcpd
+•	Configure TFTP    sudo mkdir -p /var/lib/tftpboot/EFI/BOOT
+•	Copy EFI bootloader  sudo cp /boot/efi/EFI/rocky/shimx64.efi \                                           /var/lib/tftpboot/EFI/BOOT/BOOTX64.EFI
+ sudo cp /boot/efi/EFI/rocky/grubx64.efi \
+/var/lib/tftpboot/EFI/BOOT/grubx64.efi
+•	Copy Kernel  sudo mkdir -p /var/lib/tftpboot/images
+cp /mnt/rocky/images/pxeboot/vmlinuz \
+/var/lib/tftpboot/images/
+cp /mnt/rocky/images/pxeboot/initrd.img \
+/var/lib/tftpboot/images/
+•	Create grub.cfg   sudo mkdir -p /var/lib/tftpboot/EFI/BOOT
+ sudo vi /var/lib/tftpboot/EFI/BOOT/grub.cfg
+
+set default=0
+set timeout=5
+
+menuentry 'Install Rocky Linux 9.8' {
+
+linuxefi /images/vmlinuz \
+inst.repo=http://192.168.13.13/rocky9
+
+initrdefi /images/initrd.img
+
+}
+•	Create Kickstart 
+
+sudo vi /var/www/html/ks.cfg
+
+#version=RHEL9
+
+text
+url --url=http://192.168.13.13/rocky9
+
+repo --name=BaseOS --baseurl=http://192.168.13.13/rocky9/BaseOS
+repo --name=AppStream --baseurl=http://192.168.13.13/rocky9/AppStream
+
+lang en_IN.UTF-8
+keyboard us
+timezone Asia/Kolkata --utc
+
+network --bootproto=dhcp --device=link --activate
+
+rootpw --plaintext '#akunaMatat@555'
+
+user --name=pazhani --password='Bfs@12345678' --plaintext --groups=wheel
+
+firewall --disabled
+selinux --disabled
+
+bootloader --location=mbr
+
+zerombr
+clearpart --all --initlabel
+autopart
+
+reboot
+
+%packages
+@^graphical-server-environment
+%end
+
+%post
+systemctl set-default graphical.target
+systemctl enable gdm
+%end
+~       
