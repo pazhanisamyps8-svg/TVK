@@ -1,0 +1,22 @@
+•	Add new Disk . I have Add 10G for example
+•	Verify the Disk   lsblk
+•	Create Physical Volume (PV)     pvcreate /dev/sdb
+•	Create Volume Group (VG)       vgcreate vgdata /dev/sdb
+•	Create Logical Volume (LV)       lvcreate -L 5G -n lvdata vgdata
+•	Create Filesystem    mkfs.xfs /dev/vgdata/lvdata  or    mkfs.ext4 /dev/vgdata/lvdata
+•	Mount the LV Create mount point:    mkdir /data     Get UUID: blkid 
+•	Add to /etc/fstab:    vi /etc/fstab   /dev/vgdata/lvdata   /data   xfs   defaults   0 0
+Extend LVM
+   Suppose VG still has free space and you want to increase LV from 5GB to 8GB.
+•	Check free space:     vgs
+•	Extend LV by 3GB:    lvextend -L +3G /dev/vgdata/lvdata
+•	For XFS filesystem:  xfs_growfs /data   OR
+•	     For EXT4:  resize2fs /dev/vgdata/lvdata
+Extend Using All Free Space
+•	lvextend -l +100%FREE /dev/vgdata/lvdata
+•	Reduce LVM (EXT4 Only)
+•	⚠️ XFS cannot be reduced.
+•	          umount /data
+•	Reduce filesystem to 4GB:  resize2fs /dev/vgdata/lvdata 4G
+•	                                              lvreduce -L 4G /dev/vgdata/lvdata
+•	Mount again:
