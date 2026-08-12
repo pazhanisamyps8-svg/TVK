@@ -1,0 +1,18 @@
+•	Install NFS Packages         sudo dnf install -y nfs-utils
+•	Create a Shared Directory    sudo mkdir -p /production
+•	Set permissions:             sudo chmod 777 /production
+•	Configure NFS Exports        sudo vi /etc/exports
+•	                                             /production 192.168.122.0/24(rw,sync,no_root_squash)
+	Start NFS Services               sudo systemctl enable --now rpcbind
+•	                                              sudo systemctl enable --now nfs-server
+•	Configure Firewall        sudo firewall-cmd --permanent --add-service=nfs
+•	                                        sudo firewall-cmd --permanent --add-service=mountd
+•	                                        sudo firewall-cmd --permanent --add-service=rpc-bind
+•	                                         sudo firewall-cmd –reload
+Configure NFS Client
+•	Install client utilities:       sudo dnf install -y nfs-utils
+•	Create mount point:      sudo mkdir -p /brahmos/projects
+•	Start NFS Services               sudo systemctl enable --now rpcbind
+•	Permanent Mount          sudo vi /etc/fstab
+•	                                      192.168.122.125:/production  /mnt/nfs  nfs  defaults,_netdev  0 0
+
